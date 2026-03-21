@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Calendar, Tag, FileText, Plus, Check, X } from 'lucide-react';
+import { DollarSign, Calendar, Tag, FileText, Check, X } from 'lucide-react';
 import { Input, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
 import { useAppContext } from '../hooks/useAppContext';
