@@ -11,7 +11,7 @@ import {
   PieChart,
   Pie,
 } from 'recharts';
-import { Download, FileText, FileJson } from 'lucide-react';
+import { Download, FileText, FileJson, FileDown } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { useAppContext } from '../hooks/useAppContext';
@@ -26,7 +26,7 @@ import {
   getTopCategories,
   buildCategoryChartData,
 } from '../utils/expenseHelpers';
-import { exportExpensesCSV, exportDataJSON } from '../utils/csvExport';
+import { exportExpensesCSV, exportDataJSON, exportExpensesPDF } from '../utils/csvExport';
 import { storage } from '../utils/storage';
 
 const CustomTooltip = ({
@@ -128,6 +128,15 @@ export function ReportsView() {
     showToast('JSON backup exported', 'success');
   };
 
+  const handleExportPDF = () => {
+    if (periodExpenses.length === 0) {
+      showToast('No expenses in this period to export', 'warning');
+      return;
+    }
+    const periodLabel = `Last ${reportMonths} Months`;
+    exportExpensesPDF(periodExpenses, categoryBreakdown, homeCurrency, periodLabel);
+  };
+
   const avgMonthlySpend =
     monthlyData.length > 0
       ? monthlyData.reduce((s, m) => s + m.amount, 0) / monthlyData.filter((m) => m.amount > 0).length || 0
@@ -154,6 +163,14 @@ export function ReportsView() {
           <p className="text-sm text-gray-500 mt-0.5">Insights and spending analysis</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<FileDown size={16} />}
+            onClick={handleExportPDF}
+          >
+            Export PDF
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -439,6 +456,14 @@ export function ReportsView() {
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="primary"
+              size="sm"
+              icon={<FileDown size={15} />}
+              onClick={handleExportPDF}
+            >
+              Export PDF
+            </Button>
+            <Button
+              variant="outline"
               size="sm"
               icon={<FileText size={15} />}
               onClick={handleExportCSV}
