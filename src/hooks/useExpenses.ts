@@ -80,6 +80,7 @@ export function useExpenses(userId: string) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [userCategories, setUserCategories] = useState<string[]>([]);
+  const [listMonthFilter, setListMonthFilter] = useState<string | null>(null);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -267,6 +268,8 @@ export function useExpenses(userId: string) {
     state,
     isLoading,
     userCategories,
+    listMonthFilter,
+    setListMonthFilter,
     // Actions
     addUserCategory,
     addExpense,

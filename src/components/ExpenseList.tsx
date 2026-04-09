@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, Pencil, Trash2, SlidersHorizontal } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -13,28 +13,54 @@ import type { Expense, CategoryId } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { CATEGORIES } from '../utils/categories';
 import { sortExpensesByDate } from '../utils/expenseHelpers';
+import { getMonthStart, getMonthEnd } from '../utils/dateHelpers';
 import { clsx } from 'clsx';
 
 const ITEMS_PER_PAGE = 20;
 
+type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
+
 export function ExpenseList() {
-  const { state, addExpense, updateExpense, deleteExpense, allExpensesSorted } = useAppContext();
+  const { state, addExpense, updateExpense, deleteExpense, allExpensesSorted, listMonthFilter, setListMonthFilter } = useAppContext();
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<CategoryId | 'all'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
+  const [sortBy, setSortBy] = useState<SortOption>('date-desc');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 
+  // When navigated from Dashboard with a month filter, apply it as a date range
+  useEffect(() => {
+    if (listMonthFilter) {
+      const s = getMonthStart(listMonthFilter);
+      const e = getMonthEnd(listMonthFilter);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setStartDate(`${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`);
+      setEndDate(`${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`);
+      setShowFilters(true);
+      setListMonthFilter(null);
+    }
+  }, [listMonthFilter, setListMonthFilter]);
+
   const filtered = useMemo(() => {
     let list = allExpensesSorted;
 
     if (filterCategory !== 'all') {
       list = list.filter((e) => e.categoryId === filterCategory);
+    }
+
+    if (startDate) {
+      list = list.filter((e) => e.date >= startDate);
+    }
+
+    if (endDate) {
+      list = list.filter((e) => e.date <= endDate);
     }
 
     if (searchQuery.trim()) {
@@ -50,14 +76,22 @@ export function ExpenseList() {
       );
     }
 
-    if (sortBy === 'amount') {
-      list = [...list].sort((a, b) => b.amount - a.amount);
-    } else {
-      list = sortExpensesByDate(list);
+    switch (sortBy) {
+      case 'date-asc':
+        list = [...list].sort((a, b) => a.date.localeCompare(b.date));
+        break;
+      case 'amount-desc':
+        list = [...list].sort((a, b) => b.amount - a.amount);
+        break;
+      case 'amount-asc':
+        list = [...list].sort((a, b) => a.amount - b.amount);
+        break;
+      default:
+        list = sortExpensesByDate(list);
     }
 
     return list;
-  }, [allExpensesSorted, filterCategory, searchQuery, sortBy]);
+  }, [allExpensesSorted, filterCategory, searchQuery, sortBy, startDate, endDate]);
 
   const paginated = filtered.slice(0, page * ITEMS_PER_PAGE);
   const hasMore = paginated.length < filtered.length;
@@ -85,11 +119,13 @@ export function ExpenseList() {
   const resetFilters = () => {
     setSearchQuery('');
     setFilterCategory('all');
-    setSortBy('date');
+    setSortBy('date-desc');
+    setStartDate('');
+    setEndDate('');
     setPage(1);
   };
 
-  const hasActiveFilters = searchQuery || filterCategory !== 'all' || sortBy !== 'date';
+  const hasActiveFilters = searchQuery || filterCategory !== 'all' || sortBy !== 'date-desc' || startDate || endDate;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -182,17 +218,42 @@ export function ExpenseList() {
             </div>
 
             {/* Sort */}
-            <div className="flex-1 min-w-[140px]">
+            <div className="flex-1 min-w-[160px]">
               <label className="text-xs font-medium text-gray-500 mb-1 block">Sort by</label>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'date' | 'amount')}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="w-full text-sm border border-gray-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-label="Sort expenses"
               >
-                <option value="date">Date (newest first)</option>
-                <option value="amount">Amount (highest first)</option>
+                <option value="date-desc">Date (newest first)</option>
+                <option value="date-asc">Date (oldest first)</option>
+                <option value="amount-desc">Amount (highest first)</option>
+                <option value="amount-asc">Amount (lowest first)</option>
               </select>
+            </div>
+
+            {/* Date Range */}
+            <div className="flex-1 min-w-[200px] flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-gray-500 mb-1 block">From</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-gray-500 mb-1 block">To</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                  min={startDate || undefined}
+                  className="w-full text-sm border border-gray-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
           </div>
         )}

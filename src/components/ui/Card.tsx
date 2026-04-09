@@ -52,6 +52,7 @@ interface StatCardProps {
   };
   accent?: boolean;
   className?: string;
+  onClick?: () => void;
 }
 
 export function StatCard({
@@ -62,6 +63,7 @@ export function StatCard({
   trend,
   accent = false,
   className,
+  onClick,
 }: StatCardProps) {
   const trendPositive = trend && trend.value >= 0;
 
@@ -69,8 +71,10 @@ export function StatCard({
     <Card
       className={clsx(
         accent && 'bg-gradient-to-br from-primary-600 to-primary-700 border-primary-600 text-white',
+        onClick && 'cursor-pointer hover:shadow-md hover:border-gray-200 transition-all duration-150',
         className
       )}
+      onClick={onClick}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

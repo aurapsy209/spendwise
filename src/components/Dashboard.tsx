@@ -106,7 +106,7 @@ const renderCustomLabel = ({
 };
 
 export function Dashboard() {
-  const { state, addExpense, currentMonthExpenses, currentMonthSummary, budgetStatuses, setSelectedMonth } =
+  const { state, addExpense, currentMonthExpenses, currentMonthSummary, budgetStatuses, setSelectedMonth, setActiveView, setListMonthFilter } =
     useAppContext();
   const { showToast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -266,6 +266,7 @@ export function Dashboard() {
               : '$0'
           } each`}
           icon={<TrendingUp size={20} />}
+          onClick={() => { setListMonthFilter(selectedMonth); setActiveView('expenses'); }}
         />
         <StatCard
           title="Budget"
@@ -276,6 +277,7 @@ export function Dashboard() {
               : 'No budget set'
           }
           icon={<Target size={20} />}
+          onClick={() => setActiveView('budgets')}
         />
         <StatCard
           title="Remaining"
@@ -481,7 +483,7 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Recent Expenses</h2>
             <button
-              onClick={() => {}}
+              onClick={() => { setListMonthFilter(selectedMonth); setActiveView('expenses'); }}
               className="text-xs text-primary-600 hover:text-primary-700 font-medium"
             >
               View all
