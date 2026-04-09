@@ -2,6 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { inject } from '@vercel/analytics'
+
+inject()
 
 // Skip link for accessibility
 const skipLink = document.createElement('a');
