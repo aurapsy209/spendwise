@@ -35,6 +35,7 @@ import {
   getNextMonth,
   isCurrentMonth,
   getLastNMonths,
+  getLastNDays,
 } from '../utils/dateHelpers';
 import {
   filterExpensesByMonth,
@@ -126,29 +127,16 @@ export function Dashboard() {
     [prevMonthExpenses]
   );
 
-  // Daily spending data for the area chart (last 30 days of current month)
-  const last14Days = useMemo(() => {
-    const days: string[] = [];
-    const monthStart = new Date(selectedMonth + '-01');
-    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-    const today = new Date();
-    const end = today < monthEnd ? today : monthEnd;
-
-    for (let d = new Date(monthStart); d <= end; d.setDate(d.getDate() + 1)) {
-      days.push(
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      );
-    }
-    return days.slice(-14);
-  }, [selectedMonth]);
+  // Daily spending data for the area chart (always last 14 calendar days, crossing month boundaries)
+  const last14Days = useMemo(() => getLastNDays(14), []);
 
   const dailyData = useMemo(
     () =>
-      getDailyTotals(currentMonthExpenses, last14Days).map((d) => ({
+      getDailyTotals(state.expenses, last14Days).map((d) => ({
         date: formatDateShort(d.date),
         amount: d.amount,
       })),
-    [currentMonthExpenses, last14Days]
+    [state.expenses, last14Days]
   );
 
   // Pie chart data — splits custom categories into their own slices

@@ -11,7 +11,7 @@ export const getDailyTotals = (
   return days.map((date) => {
     const total = expenses
       .filter((e) => e.date === date)
-      .reduce((sum, e) => sum + e.amount, 0);
+      .reduce((sum, e) => sum + e.amount * (e.exchangeRate ?? 1), 0);
     return { date, amount: total };
   });
 };
