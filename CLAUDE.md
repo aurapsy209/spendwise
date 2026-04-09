@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # SpendWise — Expense Tracker SaaS
 
 ## Project Overview
-A SaaS expense tracking web app built with React + TypeScript + Vite. No backend — uses localStorage for persistence.
+A SaaS expense tracking web app built with React + TypeScript + Vite. Uses Supabase for auth and cloud database.
 
 ## Tech Stack
 - **Framework**: React 18 + TypeScript
@@ -27,8 +27,9 @@ expense-tracker/
 │   │   ├── ExpenseForm.tsx  # Add/edit expense form
 │   │   ├── BudgetView.tsx   # Budget overview with progress bars
 │   │   ├── BudgetForm.tsx   # Add/edit budget form
-│   │   ├── ReportsView.tsx  # Reports with CSV/JSON export
-│   │   └── Sidebar.tsx      # Navigation sidebar + mobile bottom nav
+│   │   ├── ReportsView.tsx  # Reports with CSV/JSON/PDF export
+│   │   ├── RecurringView.tsx# Recurring expense management
+│   │   └── Sidebar.tsx      # Navigation sidebar + mobile bottom nav + currency picker
 │   ├── hooks/
 │   │   ├── useExpenses.ts   # Core state management (useReducer + Supabase sync)
 │   │   ├── useAuth.ts       # Supabase auth session management
@@ -43,8 +44,9 @@ expense-tracker/
 │   │   ├── formatters.ts    # Currency, date, percentage formatters
 │   │   ├── dateHelpers.ts   # Date range helpers
 │   │   ├── expenseHelpers.ts# Filtering, sorting, summarizing
+│   │   ├── currencies.ts    # 20 currencies, exchange rate helpers, formatWithCurrency
 │   │   ├── storage.ts       # localStorage abstraction (legacy, unused)
-│   │   └── csvExport.ts     # CSV and JSON export
+│   │   └── csvExport.ts     # CSV, JSON, and PDF export
 │   ├── types/index.ts       # TypeScript types
 │   ├── App.tsx              # Root component, view routing, welcome modal
 │   └── main.tsx             # Entry point with skip-link
@@ -99,7 +101,10 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 - Custom date range filter (start date / end date) on Expenses page
 - Search and category filter on Expenses page
 - Reports with 3/6/12 month breakdowns — custom categories shown as own slices
-- CSV and JSON export
+- CSV, JSON backup, and PDF export (browser print-to-PDF, no dependencies)
+- Multi-currency support — 20 currencies, per-expense exchange rate, home currency selector in sidebar
+- Recurring expenses — daily/weekly/monthly/yearly schedules, auto-generates missed expenses on load, pause/resume/delete
+- Vercel Analytics integration
 - Mobile-first responsive design with bottom nav on mobile
 - WCAG 2.1 AA accessibility (focus trapping, aria labels, skip-link)
 - Supabase cloud sync — data persists across devices
@@ -131,10 +136,12 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 | 2026-04-09 | Dashboard navigation — Budget card links to Budget page | Done |
 | 2026-04-09 | Multi-currency support — 20 currencies, per-expense exchange rate, home currency selector in sidebar | Done |
 | 2026-04-09 | Recurring expenses — daily/weekly/monthly/yearly, auto-generates missed expenses on load, pause/resume/delete | Done |
+| 2026-04-09 | Vercel Analytics — page view and visitor tracking via @vercel/analytics | Done |
+| 2026-04-09 | Fixed Spending Trend chart — now always shows true last 14 calendar days across month boundaries | Done |
+| 2026-04-09 | PDF export — styled HTML report with summary, category breakdown, full transaction list; browser print-to-PDF | Done |
 
 ## Planned Improvements
 - [ ] Dark mode toggle
-- [ ] Email/PDF report export
 - [ ] Notifications/reminders for budget thresholds
 - [x] User authentication (Supabase Auth)
 - [x] Cloud sync for multi-device support
@@ -142,3 +149,17 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 - [x] PWA (installable on mobile)
 - [x] Multi-currency support (20 currencies, exchange rate per expense, home currency setting)
 - [x] Recurring expenses (daily/weekly/monthly/yearly, auto-generates on load)
+- [x] PDF export (browser print-to-PDF, styled HTML report)
+- [x] Vercel Analytics
+
+## Multi-Currency Notes
+- `exchangeRate` = units of home currency per 1 unit of expense currency
+- All totals/summaries use `amount * (exchangeRate ?? 1)` to convert to home currency
+- Static rates in `currencies.ts` (pivot via USD); users can override per-expense
+- Home currency stored in `user_settings` table, loaded on mount
+
+## Recurring Expenses Notes
+- Auto-generation runs once on app load via `useEffect` in `useExpenses.ts`
+- Loop cap of 365 iterations per recurring rule to prevent infinite loops
+- New recurring expenses added mid-session won't generate until next page refresh
+- `advanceDueDate()` handles daily/weekly/monthly/yearly advancement correctly
