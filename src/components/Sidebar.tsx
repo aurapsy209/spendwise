@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Receipt,
@@ -9,7 +9,11 @@ import {
   X,
   LogOut,
   Cloud,
+  Repeat,
+  Settings,
+  Check,
 } from 'lucide-react';
+import { CURRENCIES } from '../utils/currencies';
 import { clsx } from 'clsx';
 import type { ActiveView } from '../types';
 import { useAppContext } from '../hooks/useAppContext';
@@ -41,6 +45,12 @@ const navItems: NavItem[] = [
     description: 'Spending limits',
   },
   {
+    id: 'recurring',
+    label: 'Recurring',
+    icon: <Repeat size={20} />,
+    description: 'Repeating expenses',
+  },
+  {
     id: 'reports',
     label: 'Reports',
     icon: <BarChart2 size={20} />,
@@ -56,7 +66,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onMobileClose, onSignOut, userEmail }: SidebarProps) {
-  const { state, setActiveView } = useAppContext();
+  const { state, setActiveView, homeCurrency, setHomeCurrency } = useAppContext();
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const handleNavClick = (view: ActiveView) => {
     setActiveView(view);
@@ -157,11 +168,39 @@ export function Sidebar({ mobileOpen, onMobileClose, onSignOut, userEmail }: Sid
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 space-y-3">
+        <div className="p-4 border-t border-gray-100 space-y-2">
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Cloud size={13} className="text-green-400" aria-hidden="true" />
             <span className="truncate">{userEmail}</span>
           </div>
+
+          {/* Currency picker */}
+          <div className="relative">
+            <button
+              onClick={() => setShowCurrencyPicker((v) => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            >
+              <Settings size={15} aria-hidden="true" />
+              <span>Home currency: <strong>{homeCurrency}</strong></span>
+            </button>
+            {showCurrencyPicker && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+                <div className="max-h-48 overflow-y-auto">
+                  {CURRENCIES.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => { setHomeCurrency(c.code); setShowCurrencyPicker(false); }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-gray-700">{c.code} — {c.name}</span>
+                      {homeCurrency === c.code && <Check size={14} className="text-primary-600" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onSignOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"

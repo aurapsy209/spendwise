@@ -22,10 +22,12 @@ export interface Category {
 export interface Expense {
   id: string;
   amount: number;
+  currency: string;       // e.g. 'USD', 'EUR'
+  exchangeRate: number;   // units of home currency per 1 unit of expense currency
   categoryId: CategoryId;
-  customCategory?: string; // used when categoryId === 'other'
+  customCategory?: string;
   description: string;
-  date: string; // ISO date string YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -37,17 +39,48 @@ export interface Budget {
   period: 'monthly';
 }
 
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringExpense {
+  id: string;
+  amount: number;
+  currency: string;
+  exchangeRate: number;
+  categoryId: CategoryId;
+  customCategory?: string;
+  description: string;
+  notes?: string;
+  frequency: RecurringFrequency;
+  nextDueDate: string; // YYYY-MM-DD
+  isActive: boolean;
+  createdAt: string;
+}
+
 export type ViewPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all';
 
-export type ActiveView = 'dashboard' | 'expenses' | 'budgets' | 'reports';
+export type ActiveView = 'dashboard' | 'expenses' | 'budgets' | 'reports' | 'recurring';
 
 export interface ExpenseFormData {
   amount: string;
+  currency: string;
+  exchangeRate: string;
   categoryId: CategoryId;
   customCategory: string;
   description: string;
   date: string;
   notes: string;
+}
+
+export interface RecurringFormData {
+  amount: string;
+  currency: string;
+  exchangeRate: string;
+  categoryId: CategoryId;
+  customCategory: string;
+  description: string;
+  notes: string;
+  frequency: RecurringFrequency;
+  startDate: string;
 }
 
 export interface BudgetFormData {
@@ -75,9 +108,9 @@ export type AppAction =
   | { type: 'IMPORT_DATA'; payload: { expenses: Expense[]; budgets: Budget[] } };
 
 export interface ExpenseSummary {
-  total: number;
+  total: number;       // in home currency
   count: number;
-  byCategory: Record<CategoryId, number>;
+  byCategory: Record<CategoryId, number>; // in home currency
   byDate: Record<string, number>;
 }
 

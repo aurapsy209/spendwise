@@ -10,7 +10,8 @@ import { ExpenseForm } from './ExpenseForm';
 import { useAppContext } from '../hooks/useAppContext';
 import { useToast } from './ui/Toast';
 import type { Expense, CategoryId } from '../types';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
+import { formatWithCurrency } from '../utils/currencies';
 import { CATEGORIES } from '../utils/categories';
 import { sortExpensesByDate } from '../utils/expenseHelpers';
 import { getMonthStart, getMonthEnd } from '../utils/dateHelpers';
@@ -407,7 +408,7 @@ function ExpenseRow({ expense, onEdit, onDelete }: ExpenseRowProps) {
         {/* Amount */}
         <div className="text-right flex-shrink-0">
           <div className="font-bold text-gray-900 text-sm">
-            {formatCurrency(expense.amount)}
+            {formatWithCurrency(expense.amount, expense.currency ?? 'USD')}
           </div>
           <div className="text-xs text-gray-400 hidden sm:block">{formatDate(expense.date)}</div>
         </div>

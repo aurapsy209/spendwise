@@ -1,6 +1,14 @@
 import { useReducer, useEffect, useCallback, useMemo, useState } from 'react';
-import type { AppState, AppAction, Expense, Budget, CategoryId } from '../types';
-import { supabase, toExpense, toBudget, toDbExpense, toDbBudget } from '../lib/supabase';
+import type { AppState, AppAction, Expense, Budget, CategoryId, RecurringExpense } from '../types';
+import {
+  supabase,
+  toExpense,
+  toBudget,
+  toDbExpense,
+  toDbBudget,
+  toRecurringExpense,
+  toDbRecurringExpense,
+} from '../lib/supabase';
 import { currentYearMonth } from '../utils/formatters';
 import {
   filterExpensesByMonth,
@@ -8,6 +16,7 @@ import {
   calculateBudgetStatus,
   sortExpensesByDate,
 } from '../utils/expenseHelpers';
+import { DEFAULT_CURRENCY } from '../utils/currencies';
 
 const initialState: AppState = {
   expenses: [],
@@ -76,13 +85,32 @@ function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
+function todayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function advanceDueDate(date: string, frequency: RecurringExpense['frequency']): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  switch (frequency) {
+    case 'daily':   dt.setDate(dt.getDate() + 1); break;
+    case 'weekly':  dt.setDate(dt.getDate() + 7); break;
+    case 'monthly': dt.setMonth(dt.getMonth() + 1); break;
+    case 'yearly':  dt.setFullYear(dt.getFullYear() + 1); break;
+  }
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 export function useExpenses(userId: string) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [userCategories, setUserCategories] = useState<string[]>([]);
   const [listMonthFilter, setListMonthFilter] = useState<string | null>(null);
+  const [homeCurrency, setHomeCurrencyState] = useState<string>(DEFAULT_CURRENCY);
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
 
-  // Load data from Supabase on mount
+  // Load all data from Supabase on mount
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
@@ -91,23 +119,79 @@ export function useExpenses(userId: string) {
       supabase.from('expenses').select('*').eq('user_id', userId),
       supabase.from('budgets').select('*').eq('user_id', userId),
       supabase.from('user_categories').select('name').eq('user_id', userId).order('created_at'),
-    ]).then(([expensesRes, budgetsRes, categoriesRes]) => {
+      supabase.from('user_settings').select('home_currency').eq('user_id', userId).single(),
+      supabase.from('recurring_expenses').select('*').eq('user_id', userId),
+    ]).then(async ([expensesRes, budgetsRes, categoriesRes, settingsRes, recurringRes]) => {
       if (cancelled) return;
-      dispatch({
-        type: 'IMPORT_DATA',
-        payload: {
-          expenses: (expensesRes.data ?? []).map(toExpense),
-          budgets: (budgetsRes.data ?? []).map(toBudget),
-        },
-      });
-      setUserCategories((categoriesRes.data ?? []).map((r: { name: string }) => r.name));
+
+      const expenses = (expensesRes.data ?? []).map(toExpense);
+      const budgets = (budgetsRes.data ?? []).map(toBudget);
+      const categories = (categoriesRes.data ?? []).map((r: { name: string }) => r.name);
+      const home = settingsRes.data?.home_currency ?? DEFAULT_CURRENCY;
+      let recurring = (recurringRes.data ?? []).map(toRecurringExpense);
+
+      dispatch({ type: 'IMPORT_DATA', payload: { expenses, budgets } });
+      setUserCategories(categories);
+      setHomeCurrencyState(home);
+
+      // Auto-generate overdue recurring expenses
+      const today = todayString();
+      const newExpenses: Expense[] = [];
+      const updatedRecurring: RecurringExpense[] = [];
+
+      for (const r of recurring) {
+        if (!r.isActive) {
+          updatedRecurring.push(r);
+          continue;
+        }
+        let next = r.nextDueDate;
+        let iters = 0;
+        while (next <= today && iters < 365) {
+          iters++;
+          const expense: Expense = {
+            id: crypto.randomUUID(),
+            amount: r.amount,
+            currency: r.currency,
+            exchangeRate: r.exchangeRate,
+            categoryId: r.categoryId,
+            customCategory: r.customCategory,
+            description: r.description,
+            notes: r.notes,
+            date: next,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          newExpenses.push(expense);
+          next = advanceDueDate(next, r.frequency);
+        }
+        updatedRecurring.push({ ...r, nextDueDate: next });
+      }
+
+      if (newExpenses.length > 0) {
+        for (const e of newExpenses) {
+          dispatch({ type: 'ADD_EXPENSE', payload: e });
+          await supabase.from('expenses').insert(toDbExpense(e, userId));
+        }
+        for (const r of updatedRecurring) {
+          if (r.nextDueDate !== recurring.find((x) => x.id === r.id)?.nextDueDate) {
+            await supabase
+              .from('recurring_expenses')
+              .update({ next_due_date: r.nextDueDate })
+              .eq('id', r.id);
+          }
+        }
+        recurring = updatedRecurring;
+      }
+
+      setRecurringExpenses(recurring);
       setIsLoading(false);
     });
 
     return () => { cancelled = true; };
   }, [userId]);
 
-  // --- Actions ---
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
   const addExpense = useCallback(
     async (data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
       const expense: Expense = {
@@ -130,12 +214,7 @@ export function useExpenses(userId: string) {
     async (id: string, data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
       const existing = state.expenses.find((e) => e.id === id);
       if (!existing) return;
-      const updated: Expense = {
-        ...existing,
-        ...data,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
+      const updated: Expense = { ...existing, ...data, id, updatedAt: new Date().toISOString() };
       dispatch({ type: 'UPDATE_EXPENSE', payload: updated });
       const { error } = await supabase
         .from('expenses')
@@ -210,6 +289,70 @@ export function useExpenses(userId: string) {
     [userId, userCategories]
   );
 
+  const setHomeCurrency = useCallback(
+    async (currency: string) => {
+      setHomeCurrencyState(currency);
+      const { error } = await supabase.from('user_settings').upsert(
+        { user_id: userId, home_currency: currency, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+      if (error) console.error('Failed to save home currency:', error.message);
+    },
+    [userId]
+  );
+
+  const addRecurringExpense = useCallback(
+    async (data: Omit<RecurringExpense, 'id' | 'createdAt'>) => {
+      const r: RecurringExpense = {
+        ...data,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+      };
+      setRecurringExpenses((prev) => [...prev, r]);
+      const { error } = await supabase
+        .from('recurring_expenses')
+        .insert(toDbRecurringExpense(r, userId));
+      if (error) {
+        console.error('Failed to save recurring expense:', error.message);
+        setRecurringExpenses((prev) => prev.filter((x) => x.id !== r.id));
+      }
+    },
+    [userId]
+  );
+
+  const toggleRecurringExpense = useCallback(
+    async (id: string) => {
+      setRecurringExpenses((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, isActive: !r.isActive } : r))
+      );
+      const target = recurringExpenses.find((r) => r.id === id);
+      if (!target) return;
+      const { error } = await supabase
+        .from('recurring_expenses')
+        .update({ is_active: !target.isActive })
+        .eq('id', id);
+      if (error) console.error('Failed to toggle recurring expense:', error.message);
+    },
+    [recurringExpenses]
+  );
+
+  const deleteRecurringExpense = useCallback(
+    async (id: string) => {
+      const existing = recurringExpenses.find((r) => r.id === id);
+      setRecurringExpenses((prev) => prev.filter((r) => r.id !== id));
+      const { error } = await supabase
+        .from('recurring_expenses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error && existing) {
+        console.error('Failed to delete recurring expense:', error.message);
+        setRecurringExpenses((prev) => [...prev, existing]);
+      }
+    },
+    [recurringExpenses, userId]
+  );
+
   const setActiveView = useCallback((view: AppState['activeView']) => {
     dispatch({ type: 'SET_ACTIVE_VIEW', payload: view });
   }, []);
@@ -227,13 +370,16 @@ export function useExpenses(userId: string) {
       dispatch({ type: 'IMPORT_DATA', payload: { expenses, budgets } });
       await Promise.all([
         supabase.from('expenses').insert(expenses.map((e) => toDbExpense(e, userId))),
-        supabase.from('budgets').upsert(budgets.map((b) => toDbBudget(b, userId)), { onConflict: 'user_id,category_id' }),
+        supabase
+          .from('budgets')
+          .upsert(budgets.map((b) => toDbBudget(b, userId)), { onConflict: 'user_id,category_id' }),
       ]);
     },
     [userId]
   );
 
-  // --- Derived data ---
+  // ─── Derived data ──────────────────────────────────────────────────────────
+
   const currentMonthExpenses = useMemo(
     () => filterExpensesByMonth(state.expenses, state.selectedMonth),
     [state.expenses, state.selectedMonth]
@@ -267,10 +413,13 @@ export function useExpenses(userId: string) {
   return {
     state,
     isLoading,
+    homeCurrency,
     userCategories,
     listMonthFilter,
+    recurringExpenses,
     setListMonthFilter,
     // Actions
+    setHomeCurrency,
     addUserCategory,
     addExpense,
     updateExpense,
@@ -281,6 +430,9 @@ export function useExpenses(userId: string) {
     setViewPeriod,
     setSelectedMonth,
     importData,
+    addRecurringExpense,
+    toggleRecurringExpense,
+    deleteRecurringExpense,
     // Derived
     currentMonthExpenses,
     sortedCurrentMonthExpenses,

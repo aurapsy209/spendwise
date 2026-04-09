@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Receipt, Target, BarChart2, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Receipt, Target, BarChart2, Repeat, Loader2 } from 'lucide-react';
 import { Sidebar, TopBar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ExpenseList } from './components/ExpenseList';
 import { BudgetView } from './components/BudgetView';
 import { ReportsView } from './components/ReportsView';
+import { RecurringView } from './components/RecurringView';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthPage } from './components/auth/AuthPage';
 import { ExpenseContext } from './hooks/useAppContext';
@@ -20,10 +21,11 @@ import { Sparkles } from 'lucide-react';
 
 // ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 const mobileNavItems: Array<{ id: ActiveView; label: string; icon: React.ReactNode }> = [
-  { id: 'dashboard', label: 'Home', icon: <LayoutDashboard size={20} /> },
-  { id: 'expenses', label: 'Expenses', icon: <Receipt size={20} /> },
-  { id: 'budgets', label: 'Budgets', icon: <Target size={20} /> },
-  { id: 'reports', label: 'Reports', icon: <BarChart2 size={20} /> },
+  { id: 'dashboard', label: 'Home',      icon: <LayoutDashboard size={20} /> },
+  { id: 'expenses',  label: 'Expenses',  icon: <Receipt size={20} /> },
+  { id: 'budgets',   label: 'Budgets',   icon: <Target size={20} /> },
+  { id: 'recurring', label: 'Recurring', icon: <Repeat size={20} /> },
+  { id: 'reports',   label: 'Reports',   icon: <BarChart2 size={20} /> },
 ];
 
 function MobileBottomNav() {
@@ -163,6 +165,7 @@ function MainView({ onSignOut, userEmail }: MainViewProps) {
       case 'dashboard':  return <Dashboard />;
       case 'expenses':   return <ExpenseList />;
       case 'budgets':    return <BudgetView />;
+      case 'recurring':  return <RecurringView />;
       case 'reports':    return <ReportsView />;
       default:           return <Dashboard />;
     }

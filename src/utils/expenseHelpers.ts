@@ -50,9 +50,10 @@ export const calculateSummary = (expenses: Expense[]): ExpenseSummary => {
   let total = 0;
 
   for (const expense of expenses) {
-    total += expense.amount;
-    byCategory[expense.categoryId] = (byCategory[expense.categoryId] || 0) + expense.amount;
-    byDate[expense.date] = (byDate[expense.date] || 0) + expense.amount;
+    const homeAmount = expense.amount * (expense.exchangeRate ?? 1);
+    total += homeAmount;
+    byCategory[expense.categoryId] = (byCategory[expense.categoryId] || 0) + homeAmount;
+    byDate[expense.date] = (byDate[expense.date] || 0) + homeAmount;
   }
 
   return {
@@ -142,7 +143,8 @@ export function buildCategoryChartData(expenses: Expense[]): ChartCategory[] {
   let total = 0;
 
   for (const expense of expenses) {
-    total += expense.amount;
+    const homeAmount = expense.amount * (expense.exchangeRate ?? 1);
+    total += homeAmount;
     if (expense.categoryId === 'other' && expense.customCategory?.trim()) {
       const key = `custom:${expense.customCategory}`;
       if (!entries[key]) {
@@ -153,13 +155,13 @@ export function buildCategoryChartData(expenses: Expense[]): ChartCategory[] {
           amount: 0,
         };
       }
-      entries[key].amount += expense.amount;
+      entries[key].amount += homeAmount;
     } else {
       const cat = getCategoryById(expense.categoryId);
       if (!entries[expense.categoryId]) {
         entries[expense.categoryId] = { name: cat.name, icon: cat.icon, color: cat.color, amount: 0 };
       }
-      entries[expense.categoryId].amount += expense.amount;
+      entries[expense.categoryId].amount += homeAmount;
     }
   }
 
@@ -198,6 +200,8 @@ export const getSampleExpenses = (): Expense[] => {
     return {
       id: generateId(),
       amount,
+      currency: 'USD',
+      exchangeRate: 1,
       categoryId,
       description,
       date: dateStr,

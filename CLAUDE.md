@@ -89,35 +89,56 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 
 ## Features
 - Dashboard with stat cards, area chart, pie chart, 6-month bar chart
+- Transactions stat card navigates to Expenses page filtered to current month
+- Budget stat card navigates to Budget page
 - Add/edit/delete expenses with category, amount, date, notes
 - 10 built-in categories (Food, Transport, Bills, Entertainment, etc.)
+- Custom categories saved per user in Supabase (`user_categories` table), selectable in future expenses
 - Budget setting per category with visual progress bars
-- Monthly/weekly/daily expense views
-- Search, filter, sort expense list
-- Reports with 3/6/12 month breakdowns
+- Sort expenses by date (newest/oldest) or amount (highest/lowest)
+- Custom date range filter (start date / end date) on Expenses page
+- Search and category filter on Expenses page
+- Reports with 3/6/12 month breakdowns — custom categories shown as own slices
 - CSV and JSON export
-- Welcome modal with 25 sample expenses pre-loaded
 - Mobile-first responsive design with bottom nav on mobile
 - WCAG 2.1 AA accessibility (focus trapping, aria labels, skip-link)
 - Supabase cloud sync — data persists across devices
 - User authentication (email/password via Supabase Auth)
+- PWA — installable on Android and iPhone via browser "Add to Home Screen"
+
+## Supabase Tables
+| Table | Purpose |
+|-------|---------|
+| `expenses` | All expense records, RLS per user |
+| `budgets` | Per-category monthly budgets, RLS per user |
+| `user_categories` | Custom category names per user, RLS per user |
+| `user_settings` | Per-user settings (home_currency), RLS per user |
+| `recurring_expenses` | Recurring expense templates, auto-generates expenses on load, RLS per user |
 
 ## Improvements Log
 
 | Date | Improvement | Status |
 |------|-------------|--------|
-| 2026-03-17 | Initial build — full app scaffolded | Done |
-| 2026-03-18 | CLAUDE.md updated with architecture docs, lint command, and improvement tracking | Done |
-| 2026-03-19 | Supabase integration — auth, cloud DB, replaced localStorage | Done |
-| 2026-03-20 | Custom categories — saved per user in Supabase, appear as own pie chart slices | Done |
-| 2026-03-20 | Fixed month label timezone bug — chart bars were showing wrong month name | Done |
+| 2026-04-09 | Initial build — full app scaffolded | Done |
+| 2026-04-09 | Supabase integration — auth, cloud DB, replaced localStorage | Done |
+| 2026-04-09 | Custom categories — saved per user in Supabase, appear as own pie chart slices | Done |
+| 2026-04-09 | Fixed month label timezone bug — chart bars were showing wrong month name | Done |
+| 2026-04-09 | PWA setup — app installable on Android and iPhone | Done |
+| 2026-04-09 | Expense list: added oldest-first and lowest-amount sort options | Done |
+| 2026-04-09 | Expense list: added custom date range filter (From / To) | Done |
+| 2026-04-09 | Category display fix — custom categories show as own chart slices in dashboard and reports | Done |
+| 2026-04-09 | Dashboard navigation — Transactions card links to Expenses filtered by month | Done |
+| 2026-04-09 | Dashboard navigation — Budget card links to Budget page | Done |
+| 2026-04-09 | Multi-currency support — 20 currencies, per-expense exchange rate, home currency selector in sidebar | Done |
+| 2026-04-09 | Recurring expenses — daily/weekly/monthly/yearly, auto-generates missed expenses on load, pause/resume/delete | Done |
 
 ## Planned Improvements
 - [ ] Dark mode toggle
-- [ ] Recurring expenses support
-- [ ] Multi-currency support
-- [ ] Tags/custom labels on expenses
 - [ ] Email/PDF report export
+- [ ] Notifications/reminders for budget thresholds
 - [x] User authentication (Supabase Auth)
 - [x] Cloud sync for multi-device support
-- [ ] Notifications/reminders for budget thresholds
+- [x] Custom categories per user
+- [x] PWA (installable on mobile)
+- [x] Multi-currency support (20 currencies, exchange rate per expense, home currency setting)
+- [x] Recurring expenses (daily/weekly/monthly/yearly, auto-generates on load)

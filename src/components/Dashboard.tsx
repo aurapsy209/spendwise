@@ -25,10 +25,10 @@ import { useToast } from './ui/Toast';
 import type { Expense } from '../types';
 import { getCategoryById } from '../utils/categories';
 import {
-  formatCurrency,
   formatDateShort,
   formatMonthYear,
 } from '../utils/formatters';
+import { formatWithCurrency } from '../utils/currencies';
 import {
   getDailyTotals,
   getPreviousMonth,
@@ -48,10 +48,12 @@ const CustomTooltip = ({
   active,
   payload,
   label,
+  currency,
 }: {
   active?: boolean;
   payload?: Array<{ value: number; name?: string }>;
   label?: string;
+  currency: string;
 }) => {
   if (active && payload && payload.length) {
     return (
@@ -59,7 +61,7 @@ const CustomTooltip = ({
         {label && <p className="font-medium text-gray-700 mb-1">{label}</p>}
         {payload.map((p, i) => (
           <p key={i} className="text-gray-900 font-semibold">
-            {formatCurrency(p.value)}
+            {formatWithCurrency(p.value, currency)}
           </p>
         ))}
       </div>
@@ -106,7 +108,7 @@ const renderCustomLabel = ({
 };
 
 export function Dashboard() {
-  const { state, addExpense, currentMonthExpenses, currentMonthSummary, budgetStatuses, setSelectedMonth, setActiveView, setListMonthFilter } =
+  const { state, addExpense, currentMonthExpenses, currentMonthSummary, budgetStatuses, setSelectedMonth, setActiveView, setListMonthFilter, homeCurrency } =
     useAppContext();
   const { showToast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -246,7 +248,7 @@ export function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title="Total Spent"
-          value={formatCurrency(currentMonthSummary.total)}
+          value={formatWithCurrency(currentMonthSummary.total, homeCurrency)}
           subtitle={formatMonthYear(selectedMonth)}
           icon={<Receipt size={20} />}
           trend={
@@ -262,7 +264,7 @@ export function Dashboard() {
           value={String(currentMonthSummary.count)}
           subtitle={`Avg ${
             currentMonthSummary.count > 0
-              ? formatCurrency(currentMonthSummary.total / currentMonthSummary.count)
+              ? formatWithCurrency(currentMonthSummary.total / currentMonthSummary.count, homeCurrency)
               : '$0'
           } each`}
           icon={<TrendingUp size={20} />}
@@ -270,7 +272,7 @@ export function Dashboard() {
         />
         <StatCard
           title="Budget"
-          value={formatCurrency(totalBudget)}
+          value={formatWithCurrency(totalBudget, homeCurrency)}
           subtitle={
             totalBudget > 0
               ? `${Math.round((currentMonthSummary.total / totalBudget) * 100)}% used`
@@ -281,8 +283,8 @@ export function Dashboard() {
         />
         <StatCard
           title="Remaining"
-          value={formatCurrency(Math.max(budgetRemaining, 0))}
-          subtitle={budgetRemaining < 0 ? `${formatCurrency(Math.abs(budgetRemaining))} over` : 'Available'}
+          value={formatWithCurrency(Math.max(budgetRemaining, 0), homeCurrency)}
+          subtitle={budgetRemaining < 0 ? `${formatWithCurrency(Math.abs(budgetRemaining), homeCurrency)} over` : 'Available'}
           icon={<TrendingDown size={20} />}
         />
       </div>
@@ -319,7 +321,7 @@ export function Dashboard() {
                     axisLine={false}
                     tickFormatter={(v) => `$${v}`}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip currency={homeCurrency} />} />
                   <Area
                     type="monotone"
                     dataKey="amount"
@@ -372,7 +374,7 @@ export function Dashboard() {
                             <p className="font-medium text-gray-700">
                               {d.icon} {d.name}
                             </p>
-                            <p className="font-bold text-gray-900">{formatCurrency(d.value)}</p>
+                            <p className="font-bold text-gray-900">{formatWithCurrency(d.value, homeCurrency)}</p>
                           </div>
                         );
                       }
@@ -401,7 +403,7 @@ export function Dashboard() {
                   <span className="text-gray-600 truncate">{item.name}</span>
                 </div>
                 <span className="font-semibold text-gray-900 flex-shrink-0">
-                  {formatCurrency(item.value)}
+                  {formatWithCurrency(item.value, homeCurrency)}
                 </span>
               </div>
             ))}
@@ -432,7 +434,7 @@ export function Dashboard() {
                   axisLine={false}
                   tickFormatter={(v) => `$${v}`}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currency={homeCurrency} />} />
                 <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={60}>
                   {monthlyData.map((entry, index) => (
                     <Cell
@@ -466,7 +468,7 @@ export function Dashboard() {
                       <span className="text-gray-700 font-medium truncate">{category.name}</span>
                     </div>
                     <span className="text-gray-500 flex-shrink-0 text-xs">
-                      {formatCurrency(status.spentAmount)} / {formatCurrency(status.budgetAmount)}
+                      {formatWithCurrency(status.spentAmount, homeCurrency)} / {formatWithCurrency(status.budgetAmount, homeCurrency)}
                     </span>
                   </div>
                   <ProgressBar value={status.percentage} size="sm" />
@@ -516,7 +518,7 @@ export function Dashboard() {
                     </div>
                     <CategoryBadge categoryId={expense.categoryId} customCategory={expense.customCategory} size="sm" showIcon={false} />
                     <span className="font-bold text-gray-900 text-sm flex-shrink-0">
-                      {formatCurrency(expense.amount)}
+                      {formatWithCurrency(expense.amount, expense.currency ?? homeCurrency)}
                     </span>
                   </div>
                 );

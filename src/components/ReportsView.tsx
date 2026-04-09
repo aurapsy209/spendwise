@@ -18,7 +18,7 @@ import { useAppContext } from '../hooks/useAppContext';
 import { useToast } from './ui/Toast';
 import type { CategoryId } from '../types';
 import { getCategoryById } from '../utils/categories';
-import { formatCurrency } from '../utils/formatters';
+import { formatWithCurrency } from '../utils/currencies';
 import { getLastNMonths } from '../utils/dateHelpers';
 import {
   filterExpensesByMonth,
@@ -33,16 +33,18 @@ const CustomTooltip = ({
   active,
   payload,
   label,
+  currency,
 }: {
   active?: boolean;
   payload?: Array<{ value: number }>;
   label?: string;
+  currency: string;
 }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-sm">
         {label && <p className="font-medium text-gray-700 mb-1">{label}</p>}
-        <p className="font-bold text-gray-900">{formatCurrency(payload[0].value)}</p>
+        <p className="font-bold text-gray-900">{formatWithCurrency(payload[0].value, currency)}</p>
       </div>
     );
   }
@@ -50,7 +52,7 @@ const CustomTooltip = ({
 };
 
 export function ReportsView() {
-  const { state } = useAppContext();
+  const { state, homeCurrency } = useAppContext();
   const { showToast } = useToast();
   const [reportMonths, setReportMonths] = useState<3 | 6 | 12>(6);
 
@@ -194,28 +196,28 @@ export function ReportsView() {
         <Card>
           <p className="text-xs text-gray-500 font-medium">Total ({reportMonths}mo)</p>
           <p className="text-xl font-bold text-gray-900 mt-1">
-            {formatCurrency(periodSummary.total)}
+            {formatWithCurrency(periodSummary.total, homeCurrency)}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{periodSummary.count} transactions</p>
         </Card>
         <Card>
           <p className="text-xs text-gray-500 font-medium">Monthly Avg</p>
           <p className="text-xl font-bold text-gray-900 mt-1">
-            {formatCurrency(isFinite(avgMonthlySpend) ? avgMonthlySpend : 0)}
+            {formatWithCurrency(isFinite(avgMonthlySpend) ? avgMonthlySpend : 0, homeCurrency)}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">per month</p>
         </Card>
         <Card>
           <p className="text-xs text-gray-500 font-medium">Highest Month</p>
           <p className="text-xl font-bold text-gray-900 mt-1">
-            {formatCurrency(highestMonth.amount)}
+            {formatWithCurrency(highestMonth.amount, homeCurrency)}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{highestMonth.month}</p>
         </Card>
         <Card>
           <p className="text-xs text-gray-500 font-medium">Lowest Month</p>
           <p className="text-xl font-bold text-gray-900 mt-1">
-            {formatCurrency(isFinite(lowestMonth.amount) ? lowestMonth.amount : 0)}
+            {formatWithCurrency(isFinite(lowestMonth.amount) ? lowestMonth.amount : 0, homeCurrency)}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{lowestMonth.month}</p>
         </Card>
@@ -244,7 +246,7 @@ export function ReportsView() {
                   axisLine={false}
                   tickFormatter={(v) => `$${v}`}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currency={homeCurrency} />} />
                 <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={60}>
                   {monthlyData.map((_, index) => (
                     <Cell
@@ -296,7 +298,7 @@ export function ReportsView() {
                             <p className="font-medium text-gray-700">
                               {d.icon} {d.name}
                             </p>
-                            <p className="font-bold text-gray-900">{formatCurrency(d.amount)}</p>
+                            <p className="font-bold text-gray-900">{formatWithCurrency(d.amount, homeCurrency)}</p>
                             <p className="text-gray-500">{d.percentage.toFixed(1)}% of total</p>
                           </div>
                         );
@@ -328,7 +330,7 @@ export function ReportsView() {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <span className="text-sm font-bold text-gray-900">
-                        {formatCurrency(cat.amount)}
+                        {formatWithCurrency(cat.amount, homeCurrency)}
                       </span>
                       <span className="text-xs text-gray-400 ml-1">
                         ({cat.percentage.toFixed(1)}%)
@@ -393,7 +395,7 @@ export function ReportsView() {
                                   style={{ backgroundColor: cat.color }}
                                 />
                                 <span className="text-gray-600">{cat.name}:</span>
-                                <span className="font-semibold">{formatCurrency(p.value as number)}</span>
+                                <span className="font-semibold">{formatWithCurrency(p.value as number, homeCurrency)}</span>
                               </div>
                             );
                           })}
