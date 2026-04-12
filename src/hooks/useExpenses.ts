@@ -45,6 +45,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
         expenses: state.expenses.filter((e) => e.id !== action.payload),
       };
 
+    case 'BULK_ADD_EXPENSES':
+      return { ...state, expenses: [...state.expenses, ...action.payload] };
+
+    case 'BULK_REMOVE_EXPENSES':
+      return {
+        ...state,
+        expenses: state.expenses.filter((e) => !action.payload.includes(e.id)),
+      };
+
     case 'SET_BUDGET': {
       const exists = state.budgets.find((b) => b.categoryId === action.payload.categoryId);
       if (exists) {
@@ -205,6 +214,27 @@ export function useExpenses(userId: string) {
       if (error) {
         console.error('Failed to save expense:', error.message);
         dispatch({ type: 'DELETE_EXPENSE', payload: expense.id });
+      }
+    },
+    [userId]
+  );
+
+  const addExpensesBulk = useCallback(
+    async (rows: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+      const expenses: Expense[] = rows.map((data) => ({
+        ...data,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+      dispatch({ type: 'BULK_ADD_EXPENSES', payload: expenses });
+      const { error } = await supabase
+        .from('expenses')
+        .insert(expenses.map((e) => toDbExpense(e, userId)));
+      if (error) {
+        console.error('Failed to bulk save expenses:', error.message);
+        dispatch({ type: 'BULK_REMOVE_EXPENSES', payload: expenses.map((e) => e.id) });
+        throw error;
       }
     },
     [userId]
@@ -422,6 +452,7 @@ export function useExpenses(userId: string) {
     setHomeCurrency,
     addUserCategory,
     addExpense,
+    addExpensesBulk,
     updateExpense,
     deleteExpense,
     setBudget,

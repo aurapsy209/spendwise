@@ -58,7 +58,7 @@ export interface RecurringExpense {
 
 export type ViewPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all';
 
-export type ActiveView = 'dashboard' | 'expenses' | 'budgets' | 'reports' | 'recurring';
+export type ActiveView = 'dashboard' | 'expenses' | 'budgets' | 'reports' | 'recurring' | 'import';
 
 export interface ExpenseFormData {
   amount: string;
@@ -100,6 +100,8 @@ export type AppAction =
   | { type: 'ADD_EXPENSE'; payload: Expense }
   | { type: 'UPDATE_EXPENSE'; payload: Expense }
   | { type: 'DELETE_EXPENSE'; payload: string }
+  | { type: 'BULK_ADD_EXPENSES'; payload: Expense[] }
+  | { type: 'BULK_REMOVE_EXPENSES'; payload: string[] }
   | { type: 'SET_BUDGET'; payload: Budget }
   | { type: 'DELETE_BUDGET'; payload: CategoryId }
   | { type: 'SET_ACTIVE_VIEW'; payload: ActiveView }

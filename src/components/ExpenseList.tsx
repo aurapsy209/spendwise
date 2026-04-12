@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, Filter, Pencil, Trash2, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, Pencil, Trash2, SlidersHorizontal, Upload } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { CategoryBadge } from './ui/Badge';
@@ -21,7 +21,11 @@ const ITEMS_PER_PAGE = 20;
 
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 
-export function ExpenseList() {
+interface Props {
+  onImportClick?: () => void;
+}
+
+export function ExpenseList({ onImportClick }: Props) {
   const { state, addExpense, updateExpense, deleteExpense, allExpensesSorted, listMonthFilter, setListMonthFilter } = useAppContext();
   const { showToast } = useToast();
 
@@ -138,13 +142,24 @@ export function ExpenseList() {
             {state.expenses.length} total expense{state.expenses.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={<Plus size={18} />}
-          onClick={() => setShowAddModal(true)}
-        >
-          Add Expense
-        </Button>
+        <div className="flex gap-2">
+          {onImportClick && (
+            <Button
+              variant="outline"
+              icon={<Upload size={16} />}
+              onClick={onImportClick}
+            >
+              Import Statement
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            icon={<Plus size={18} />}
+            onClick={() => setShowAddModal(true)}
+          >
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

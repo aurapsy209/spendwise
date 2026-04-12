@@ -6,6 +6,9 @@ import { ExpenseList } from './components/ExpenseList';
 import { BudgetView } from './components/BudgetView';
 import { ReportsView } from './components/ReportsView';
 import { RecurringView } from './components/RecurringView';
+import { BankImportUpload } from './components/BankImportUpload';
+import { BankImportReview } from './components/BankImportReview';
+import { useBankImport } from './hooks/useBankImport';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthPage } from './components/auth/AuthPage';
 import { ExpenseContext } from './hooks/useAppContext';
@@ -157,16 +160,23 @@ interface MainViewProps {
 }
 
 function MainView({ onSignOut, userEmail }: MainViewProps) {
-  const { state, isLoading } = useAppContext();
+  const { state, isLoading, setActiveView } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const bankImport = useBankImport();
+
+  const handleParsed = (rows: Parameters<typeof bankImport.onParsed>[0]) => {
+    bankImport.onParsed(rows);
+    setActiveView('import');
+  };
 
   const renderView = () => {
     switch (state.activeView) {
       case 'dashboard':  return <Dashboard />;
-      case 'expenses':   return <ExpenseList />;
+      case 'expenses':   return <ExpenseList onImportClick={bankImport.openUpload} />;
       case 'budgets':    return <BudgetView />;
       case 'recurring':  return <RecurringView />;
       case 'reports':    return <ReportsView />;
+      case 'import':     return <BankImportReview hook={bankImport} />;
       default:           return <Dashboard />;
     }
   };
@@ -201,6 +211,11 @@ function MainView({ onSignOut, userEmail }: MainViewProps) {
 
       <MobileBottomNav />
       <WelcomeModal />
+      <BankImportUpload
+        isOpen={bankImport.uploadOpen}
+        onClose={bankImport.closeUpload}
+        onParsed={handleParsed}
+      />
     </div>
   );
 }
