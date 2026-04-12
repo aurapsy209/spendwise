@@ -27,13 +27,16 @@ expense-tracker/
 │   │   ├── ExpenseForm.tsx  # Add/edit expense form
 │   │   ├── BudgetView.tsx   # Budget overview with progress bars
 │   │   ├── BudgetForm.tsx   # Add/edit budget form
-│   │   ├── ReportsView.tsx  # Reports with CSV/JSON/PDF export
-│   │   ├── RecurringView.tsx# Recurring expense management
-│   │   └── Sidebar.tsx      # Navigation sidebar + mobile bottom nav + currency picker
+│   │   ├── ReportsView.tsx      # Reports with CSV/JSON/PDF export
+│   │   ├── RecurringView.tsx    # Recurring expense management
+│   │   ├── BankImportUpload.tsx # PDF upload modal (drag & drop, pdfjs extraction)
+│   │   ├── BankImportReview.tsx # Transaction review/edit table before import
+│   │   └── Sidebar.tsx          # Navigation sidebar + mobile bottom nav + currency picker
 │   ├── hooks/
 │   │   ├── useExpenses.ts   # Core state management (useReducer + Supabase sync)
 │   │   ├── useAuth.ts       # Supabase auth session management
-│   │   └── useAppContext.ts # React Context for global state
+│   │   ├── useAppContext.ts # React Context for global state
+│   │   └── useBankImport.ts # Import wizard state (rows, selection, edit, duplicates)
 │   ├── lib/
 │   │   └── supabase.ts      # Supabase client + DB↔app type mappers
 │   ├── components/
@@ -44,10 +47,13 @@ expense-tracker/
 │   │   ├── formatters.ts    # Currency, date, percentage formatters
 │   │   ├── dateHelpers.ts   # Date range helpers
 │   │   ├── expenseHelpers.ts# Filtering, sorting, summarizing
-│   │   ├── currencies.ts    # 20 currencies, exchange rate helpers, formatWithCurrency
-│   │   ├── storage.ts       # localStorage abstraction (legacy, unused)
-│   │   └── csvExport.ts     # CSV, JSON, and PDF export
-│   ├── types/index.ts       # TypeScript types
+│   │   ├── currencies.ts        # 20 currencies, exchange rate helpers, formatWithCurrency
+│   │   ├── bankStatementParser.ts # Regex parser for PDF bank statement text
+│   │   ├── storage.ts           # localStorage abstraction (legacy, unused)
+│   │   └── csvExport.ts         # CSV, JSON, and PDF export
+│   ├── types/
+│   │   ├── index.ts         # Core TypeScript types
+│   │   └── import.ts        # ParsedTransaction and ImportRow types for bank import
 │   ├── App.tsx              # Root component, view routing, welcome modal
 │   └── main.tsx             # Entry point with skip-link
 ├── CLAUDE.md                # This file
@@ -104,6 +110,7 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 - CSV, JSON backup, and PDF export (browser print-to-PDF, no dependencies)
 - Multi-currency support — 20 currencies, per-expense exchange rate, home currency selector in sidebar
 - Recurring expenses — daily/weekly/monthly/yearly schedules, auto-generates missed expenses on load, pause/resume/delete
+- Bank statement PDF import — drag & drop upload, client-side text extraction, regex parser, editable review table before bulk import
 - Vercel Analytics integration
 - Mobile-first responsive design with bottom nav on mobile
 - WCAG 2.1 AA accessibility (focus trapping, aria labels, skip-link)
@@ -139,6 +146,7 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 | 2026-04-09 | Vercel Analytics — page view and visitor tracking via @vercel/analytics | Done |
 | 2026-04-09 | Fixed Spending Trend chart — now always shows true last 14 calendar days across month boundaries | Done |
 | 2026-04-09 | PDF export — styled HTML report with summary, category breakdown, full transaction list; browser print-to-PDF | Done |
+| 2026-04-12 | Bank statement PDF import — pdfjs extraction, regex parser, editable review table, bulk Supabase insert | Done |
 
 ## Planned Improvements
 - [ ] Dark mode toggle
@@ -151,6 +159,15 @@ All app state lives in `useExpenses.ts` (useReducer). `useAppContext.ts` wraps i
 - [x] Recurring expenses (daily/weekly/monthly/yearly, auto-generates on load)
 - [x] PDF export (browser print-to-PDF, styled HTML report)
 - [x] Vercel Analytics
+- [x] Bank statement PDF import (pdfjs, regex parser, review table, bulk import)
+
+## Bank Statement Import Notes
+- PDF text extraction uses Y-coordinate grouping (not simple join) to reconstruct lines from multi-column PDFs
+- Parser tested against Chase Freedom Unlimited format (MM/DD dates, no currency symbol on amounts)
+- Negative amounts (credits/payments) are automatically skipped
+- All transactions default to `categoryId: 'other'` — user assigns categories in review table
+- Duplicate detection: warns if (date + description + amount) already exists in expenses
+- `pdfjs-dist@3.11.174` pinned (v3 = last version compatible with Vite 4 / Node 15.8)
 
 ## Multi-Currency Notes
 - `exchangeRate` = units of home currency per 1 unit of expense currency
